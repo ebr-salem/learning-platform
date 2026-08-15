@@ -20,7 +20,7 @@ class EnsureUserRole
         if ($user === null || ! in_array($user->role?->value, $roles, true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Forbidden: insufficient permissions.',
+                'message' => 'غير مصرح لك: صلاحيات غير كافية',
                 'data' => null,
             ], 403);
         }

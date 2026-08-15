@@ -22,7 +22,7 @@ class StudentProfileFactory extends Factory
         return [
             'user_id' => User::factory()->student(),
             'student_code' => 'STU-'.fake()->unique()->numberBetween(1000, 9999),
-            'grade' => fake()->randomElement(['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6']),
+            'grade' => fake()->randomElement(['الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس']),
             'profile_image' => fake()->optional()->imageUrl(),
             'qr_code_string' => Str::uuid()->toString(),
             'dob' => fake()->dateTimeBetween('-14 years', '-6 years')->format('Y-m-d'),

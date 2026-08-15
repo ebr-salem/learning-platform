@@ -15,7 +15,7 @@ class StudentController extends Controller
         $profile = $user->studentProfile;
 
         if ($profile === null) {
-            return $this->errorResponse('Student profile not found.', 404);
+            return $this->errorResponse('ملف الطالب غير موجود', 404);
         }
 
         return $this->successResponse([
@@ -54,7 +54,7 @@ class StudentController extends Controller
         $lesson = Lesson::find($id);
 
         if ($lesson === null) {
-            return $this->errorResponse('Lesson not found.', 404);
+            return $this->errorResponse('الدرس غير موجود', 404);
         }
 
         $previousLessonId = Lesson::where('id', '<', $id)->orderByDesc('id')->value('id');

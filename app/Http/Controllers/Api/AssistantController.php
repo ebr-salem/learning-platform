@@ -20,7 +20,7 @@ class AssistantController extends Controller
             ->first();
 
         if ($profile === null) {
-            return $this->errorResponse('Student not found.', 404);
+            return $this->errorResponse('الطالب غير موجود', 404);
         }
 
         return $this->successResponse([
@@ -32,7 +32,7 @@ class AssistantController extends Controller
             'dob' => $profile->dob?->format('Y-m-d'),
             'guardian_name' => $profile->guardian_name,
             'guardian_phone' => $profile->guardian_phone,
-        ], 'Student found.');
+        ], 'تم العثور على الطالب');
     }
 
     public function registerAttendance(Request $request): JsonResponse
@@ -44,7 +44,7 @@ class AssistantController extends Controller
         $student = User::findOrFail($validated['student_id']);
 
         if ($student->role !== UserRole::Student) {
-            return $this->errorResponse('The given user is not a student.', 422);
+            return $this->errorResponse('المستخدم المحدد ليس طالباً', 422);
         }
 
         $attendance = Attendance::create([
@@ -54,6 +54,6 @@ class AssistantController extends Controller
 
         SendAttendanceSmsJob::dispatch($student);
 
-        return $this->successResponse($attendance->fresh(), 'Attendance registered successfully.', 201);
+        return $this->successResponse($attendance->fresh(), 'تم تسجيل الحضور بنجاح', 201);
     }
 }

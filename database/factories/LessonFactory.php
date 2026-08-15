@@ -18,7 +18,7 @@ class LessonFactory extends Factory
     public function definition(): array
     {
         return [
-            'chapter_name' => 'Chapter '.fake()->numberBetween(1, 10),
+            'chapter_name' => 'الفصل '.fake()->numberBetween(1, 10),
             'title' => fake()->sentence(4),
             'duration_minutes' => fake()->numberBetween(15, 90),
             'video_url' => 'https://www.youtube.com/watch?v='.fake()->regexify('[A-Za-z0-9_-]{11}'),

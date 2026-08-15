@@ -17,7 +17,7 @@ class AuthController extends Controller
         ]);
 
         if (! Auth::attempt($credentials)) {
-            return $this->errorResponse('Invalid username or password.', 401);
+            return $this->errorResponse('اسم المستخدم أو كلمة المرور غير صحيحة', 401);
         }
 
         $user = Auth::user();
@@ -30,6 +30,6 @@ class AuthController extends Controller
                 'username' => $user->username,
                 'role' => $user->role->value,
             ],
-        ], 'Login successful.');
+        ], 'تم تسجيل الدخول بنجاح');
     }
 }
