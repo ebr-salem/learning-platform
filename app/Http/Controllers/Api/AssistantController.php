@@ -47,6 +47,12 @@ class AssistantController extends Controller
             return $this->errorResponse('المستخدم المحدد ليس طالباً', 422);
         }
 
+        if (Attendance::where('student_id', $student->id)
+            ->whereDate('created_at', today())
+            ->exists()) {
+            return $this->errorResponse('تم تسجيل حضور الطالب مسبقاً اليوم', 409);
+        }
+
         $attendance = Attendance::create([
             'student_id' => $student->id,
             'scanned_by' => $request->user()->id,
