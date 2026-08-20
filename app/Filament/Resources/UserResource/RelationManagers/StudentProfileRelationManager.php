@@ -8,6 +8,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -22,37 +23,7 @@ class StudentProfileRelationManager extends RelationManager
     public function form(Schema $schema): Schema
     {
         return $schema
-            ->components([
-                TextInput::make('student_code')
-                    ->label('كود الطالب')
-                    ->required()
-                    ->maxLength(255)
-                    ->unique(ignoreRecord: true),
-                Select::make('grade')
-                    ->label('الصف الدراسي')
-                    ->options(array_combine(StudentProfile::GRADES, StudentProfile::GRADES))
-                    ->required(),
-                TextInput::make('profile_image')
-                    ->label('صورة الطالب')
-                    ->url()
-                    ->maxLength(255)
-                    ->nullable(),
-                TextInput::make('qr_code_string')
-                    ->label('رمز QR')
-                    ->disabled(),
-                DatePicker::make('dob')
-                    ->label('تاريخ الميلاد')
-                    ->required(),
-                TextInput::make('guardian_name')
-                    ->label('اسم ولي الأمر')
-                    ->required()
-                    ->maxLength(255),
-                TextInput::make('guardian_phone')
-                    ->label('هاتف ولي الأمر')
-                    ->tel()
-                    ->required()
-                    ->maxLength(255),
-            ]);
+            ->components(self::profileSchemaComponents());
     }
 
     public function table(Table $table): Table
@@ -75,12 +46,49 @@ class StudentProfileRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('إضافة ملف الطالب')
-                    ->hidden(fn (): bool => $this->getOwnerRecord()->studentProfile()->exists()),
+                    ->hidden(fn(): bool => $this->getOwnerRecord()->studentProfile()->exists()),
             ])
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make(),
             ]);
+    }
+
+    public static function profileSchemaComponents(): array
+    {
+        return [
+            TextInput::make('student_code')
+                ->label('كود الطالب')
+                ->required()
+                ->maxLength(255)
+                ->unique(ignoreRecord: true),
+            Select::make('grade')
+                ->label('الصف الدراسي')
+                ->options(array_combine(StudentProfile::GRADES, StudentProfile::GRADES))
+                ->required(),
+            FileUpload::make('profile_image')
+                ->label('صورة الطالب')
+                ->image()
+                ->disk('public')
+                ->directory('student-profiles')
+                ->imageEditor()
+                ->nullable(),
+            TextInput::make('qr_code_string')
+                ->label('رمز QR')
+                ->disabled(),
+            DatePicker::make('dob')
+                ->label('تاريخ الميلاد')
+                ->required(),
+            TextInput::make('guardian_name')
+                ->label('اسم ولي الأمر')
+                ->required()
+                ->maxLength(255),
+            TextInput::make('guardian_phone')
+                ->label('هاتف ولي الأمر')
+                ->tel()
+                ->required()
+                ->maxLength(255),
+        ];
     }
 }

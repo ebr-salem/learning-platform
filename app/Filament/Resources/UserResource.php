@@ -12,6 +12,8 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -57,6 +59,8 @@ class UserResource extends Resource
                 Select::make('role')
                     ->label('الدور')
                     ->options(UserRole::class)
+                    ->default(UserRole::Student)
+                    ->live()
                     ->required(),
                 TextInput::make('phone')
                     ->label('رقم الهاتف')
@@ -85,6 +89,12 @@ class UserResource extends Resource
                 DateTimePicker::make('email_verified_at')
                     ->label('تاريخ توثيق البريد')
                     ->nullable(),
+                Section::make('بيانات الطالب')
+                    ->description('تظهر هذه الحقول عند اختيار الدور «طالب»')
+                    ->relationship('studentProfile')
+                    ->visible(fn(Get $get): bool => in_array($get('role'), [UserRole::Student, UserRole::Student->value], true))
+                    ->columns(2)
+                    ->schema(StudentProfileRelationManager::profileSchemaComponents()),
             ]);
     }
 
@@ -136,9 +146,7 @@ class UserResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            StudentProfileRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array
