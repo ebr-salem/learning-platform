@@ -24,13 +24,7 @@ class ListUsers extends ListRecords
     public function getTabs(): array
     {
         return [
-            'students' => Tab::make('الطلاب')
-                ->modifyQueryUsing(fn(Builder $query): Builder => $query->where('role', UserRole::Student->value))
-                ->badge(fn(): int => User::query()->where('role', UserRole::Student->value)->count()),
 
-            // 'assistants' => Tab::make('المساعدين')
-            //     ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('role', UserRole::Assistant->value))
-            //     ->badge(fn (): int => User::query()->where('role', UserRole::Assistant->value)->count()),
         ];
     }
 
