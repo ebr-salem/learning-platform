@@ -28,7 +28,20 @@ class StudentProfile extends Model
     {
         static::creating(function (StudentProfile $profile): void {
             $profile->qr_code_string ??= (string) Str::uuid();
+
+            // Only generate a code if one wasn't manually provided
+            if (empty($profile->student_code)) {
+
+                do {
+                    $code = 'STU-' . random_int(1000, 9999);
+                } while (self::where('student_code', $code)->exists());
+
+                // Inject the code into the profile right before it hits MySQL
+                $profile->student_code = $code;
+            }
         });
+
+
     }
 
     protected function casts(): array

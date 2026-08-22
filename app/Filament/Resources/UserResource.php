@@ -87,6 +87,10 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
+                TextColumn::make('studentProfile.student_code')
+                    ->label('كود الطالب')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('name')
                     ->label('الاسم')
                     ->searchable()
