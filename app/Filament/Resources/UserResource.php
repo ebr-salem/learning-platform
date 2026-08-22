@@ -48,31 +48,19 @@ class UserResource extends Resource
         return $schema
             ->components([
                 TextInput::make('name')
-                    ->label('الاسم')
+                    ->label('اسم الطالب')
                     ->required()
                     ->maxLength(255),
                 TextInput::make('username')
-                    ->label('اسم المستخدم')
+                    ->label('اسم الدخول')
                     ->required()
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
-                Select::make('role')
-                    ->label('الدور')
-                    ->options(UserRole::class)
-                    ->default(UserRole::Student)
-                    ->live()
-                    ->required(),
                 TextInput::make('phone')
                     ->label('رقم الهاتف')
                     ->tel()
                     ->required()
                     ->maxLength(255),
-                TextInput::make('email')
-                    ->label('البريد الإلكتروني')
-                    ->email()
-                    ->required()
-                    ->maxLength(255)
-                    ->unique(ignoreRecord: true),
                 TextInput::make('password')
                     ->label('كلمة المرور')
                     ->password()
@@ -86,9 +74,6 @@ class UserResource extends Resource
                     ->password()
                     ->revealable()
                     ->dehydrated(false),
-                DateTimePicker::make('email_verified_at')
-                    ->label('تاريخ توثيق البريد')
-                    ->nullable(),
                 Section::make('بيانات الطالب')
                     ->description('تظهر هذه الحقول عند اختيار الدور «طالب»')
                     ->relationship('studentProfile')
@@ -107,18 +92,7 @@ class UserResource extends Resource
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('username')
-                    ->label('اسم المستخدم')
-                    ->searchable(),
-                TextColumn::make('role')
-                    ->label('الدور')
-                    ->badge()
-                    ->formatStateUsing(fn(UserRole $state): string => $state->getLabel())
-                    ->colors([
-                        'info' => UserRole::Assistant,
-                        'gray' => UserRole::Student,
-                    ]),
-                TextColumn::make('email')
-                    ->label('البريد الإلكتروني')
+                    ->label('اسم الدخول')
                     ->searchable(),
                 TextColumn::make('phone')
                     ->label('رقم الهاتف'),
@@ -126,11 +100,6 @@ class UserResource extends Resource
                     ->label('تاريخ الإنشاء')
                     ->dateTime('Y-m-d')
                     ->sortable(),
-            ])
-            ->filters([
-                SelectFilter::make('role')
-                    ->label('الدور')
-                    ->options(UserRole::class),
             ])
             ->recordActions([
                 \Filament\Actions\ViewAction::make(),
