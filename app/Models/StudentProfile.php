@@ -40,8 +40,6 @@ class StudentProfile extends Model
                 $profile->student_code = $code;
             }
         });
-
-
     }
 
     protected function casts(): array
