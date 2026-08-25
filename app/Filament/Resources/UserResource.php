@@ -4,20 +4,20 @@ namespace App\Filament\Resources;
 
 use App\Enums\UserRole;
 use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers\StudentProfileRelationManager;
+use App\Models\StudentProfile;
 use App\Models\User;
 use BackedEnum;
-use Filament\Forms\Components\Builder;
-use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Fieldset;
+use Filament\Forms\Get;
+use Closure;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -74,12 +74,49 @@ class UserResource extends Resource
                     ->password()
                     ->revealable()
                     ->dehydrated(false),
-                Section::make('بيانات الطالب')
-                    ->description('تظهر هذه الحقول عند اختيار الدور «طالب»')
+                Fieldset::make('بيانات ملف الطالب')
                     ->relationship('studentProfile')
-                    ->visible(fn(Get $get): bool => in_array($get('role'), [UserRole::Student, UserRole::Student->value], true))
                     ->columns(2)
-                    ->schema(StudentProfileRelationManager::profileSchemaComponents()),
+                    ->schema([
+                        TextInput::make('student_code')
+                            ->label('كود الطالب')
+                            ->disabled(),
+                        Select::make('grade')
+                            ->label('الصف الدراسي')
+                            ->options(array_combine(StudentProfile::GRADES, StudentProfile::GRADES))
+                            ->required(),
+                        FileUpload::make('profile_image')
+                            ->label('صورة الطالب')
+                            ->image()
+                            ->disk('public')
+                            ->directory('student-profiles')
+                            ->imageEditor()
+                            ->nullable(),
+                        TextInput::make('qr_code_string')
+                            ->label('رمز QR')
+                            ->disabled(),
+                        DatePicker::make('dob')
+                            ->label('تاريخ الميلاد')
+                            ->required(),
+                        TextInput::make('guardian_name')
+                            ->label('اسم ولي الأمر')
+                            ->required()
+                            ->maxLength(255),
+                        TextInput::make('guardian_phone')
+                            ->label('هاتف ولي الأمر')
+                            ->tel()
+                            ->required()
+                            ->maxLength(255)
+                            ->rule(
+                                fn(\Filament\Schemas\Components\Utilities\Get $get) => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                    $phone = $get('../phone');
+
+                                    if (filled($phone) && $value === $phone) {
+                                        $fail('رقم ولي الأمر يجب أن يكون مختلفاً عن رقم الطالب.');
+                                    }
+                                }
+                            ),
+                    ]),
             ]);
     }
 
