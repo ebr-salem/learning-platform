@@ -19,6 +19,7 @@ use Closure;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -152,6 +153,7 @@ class UserResource extends Resource
                     ->dateTime('Y-m-d')
                     ->sortable(),
             ])
+            ->deferFilters(false)
             ->filters([
                 \Filament\Tables\Filters\SelectFilter::make('studentProfile.group_id')
                     ->label('المجموعة')
@@ -159,7 +161,7 @@ class UserResource extends Resource
                     ->searchable()
                     ->preload()
                     ->placeholder('الكل'),
-            ])
+            ], layout: FiltersLayout::AboveContent)
             ->recordActions([
                 \Filament\Actions\ViewAction::make(),
                 \Filament\Actions\EditAction::make(),
