@@ -7,9 +7,10 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['user_id', 'student_code', 'grade', 'profile_image', 'qr_code_string', 'dob', 'guardian_name', 'guardian_phone'])]
+#[Fillable(['user_id', 'student_code', 'grade', 'group_id', 'profile_image', 'qr_code_string', 'dob', 'guardian_name', 'guardian_phone'])]
 class StudentProfile extends Model
 {
     /** @use HasFactory<StudentProfileFactory> */
@@ -52,5 +53,10 @@ class StudentProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(Group::class);
     }
 }

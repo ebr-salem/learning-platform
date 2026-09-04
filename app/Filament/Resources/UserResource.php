@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Enums\UserRole;
 use App\Filament\Resources\UserResource\Pages;
+use App\Models\Group;
 use App\Models\StudentProfile;
 use App\Models\User;
 use BackedEnum;
@@ -85,6 +86,12 @@ class UserResource extends Resource
                             ->label('الصف الدراسي')
                             ->options(array_combine(StudentProfile::GRADES, StudentProfile::GRADES))
                             ->required(),
+                        Select::make('group_id')
+                            ->label('المجموعة')
+                            ->relationship('group', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
                         FileUpload::make('profile_image')
                             ->label('صورة الطالب')
                             ->image()
@@ -137,10 +144,21 @@ class UserResource extends Resource
                     ->searchable(),
                 TextColumn::make('phone')
                     ->label('رقم الهاتف'),
+                TextColumn::make('studentProfile.group.name')
+                    ->label('المجموعة')
+                    ->sortable(),
                 TextColumn::make('created_at')
                     ->label('تاريخ الإنشاء')
                     ->dateTime('Y-m-d')
                     ->sortable(),
+            ])
+            ->filters([
+                \Filament\Tables\Filters\SelectFilter::make('studentProfile.group_id')
+                    ->label('المجموعة')
+                    ->relationship('studentProfile.group', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('الكل'),
             ])
             ->recordActions([
                 \Filament\Actions\ViewAction::make(),
