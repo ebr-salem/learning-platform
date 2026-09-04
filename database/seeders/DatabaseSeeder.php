@@ -23,7 +23,6 @@ class DatabaseSeeder extends Seeder
             'username' => 'admin',
             'role' => UserRole::Assistant,
             'phone' => '01111111111',
-            'email' => 'admin@example.com',
             'password' => 'password',
         ]);
 
@@ -33,7 +32,6 @@ class DatabaseSeeder extends Seeder
                 'username' => 'student1',
                 'role' => UserRole::Student,
                 'phone' => '01122222222',
-                'email' => 'student1@example.com',
                 'password' => 'password',
             ])->id,
             'student_code' => 'STU-0001',

@@ -23,7 +23,6 @@ class StudentController extends Controller
             'name' => $user->name,
             'username' => $user->username,
             'phone' => $user->phone,
-            'email' => $user->email,
             'qr_code_string' => $profile->qr_code_string,
             'student_code' => $profile->student_code,
             'grade' => $profile->grade,
@@ -39,7 +38,7 @@ class StudentController extends Controller
         $query = Lesson::query();
 
         if ($request->filled('search')) {
-            $query->where('title', 'like', '%'.$request->string('search').'%');
+            $query->where('title', 'like', '%' . $request->string('search') . '%');
         }
 
         $lessons = $query
