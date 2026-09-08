@@ -43,10 +43,29 @@ class LessonResource extends Resource
                     ->label('اسم الفصل')
                     ->required()
                     ->maxLength(255),
+
                 TextInput::make('title')
                     ->label('عنوان الدرس')
                     ->required()
                     ->maxLength(255),
+
+                TextInput::make('video_url')
+                    ->label('رابط فيديو اليوتيوب')
+                    ->url()
+                    ->required()
+                    ->rules([new YoutubeUrl()]),
+
+                TextInput::make('thumbnail_url')
+                    ->label('رابط الصورة المصغرة')
+                    ->url()
+                    ->required(),
+
+                Textarea::make('about_lesson')
+                    ->label('عن الدرس')
+                    ->rows(5)
+                    ->required()
+                    ->columnSpanFull(),
+
                 TextInput::make('duration_minutes')
                     ->label('المدة (بالدقائق)')
                     ->integer()
@@ -54,33 +73,26 @@ class LessonResource extends Resource
                     ->minValue(1)
                     ->maxValue(480)
                     ->extraInputAttributes([
-                        // 1. Block letters and symbols
                         'onkeypress' => 'return event.charCode >= 48 && event.charCode <= 57',
-
-                        // 2. Instantly force the value to stay between 1 and 480
                         'oninput' => "
-            if (this.value > 480) { this.value = 480; }
-            if (this.value !== '' && this.value < 1) { this.value = 1; }
-        "
-                    ]),
-                TextInput::make('video_url')
-                    ->label('رابط فيديو اليوتيوب')
-                    ->url()
-                    ->required()
-                    ->rules([new YoutubeUrl()]),
-                TextInput::make('thumbnail_url')
-                    ->label('رابط الصورة المصغرة')
-                    ->url()
-                    ->required(),
+                        if (this.value > 480) { this.value = 480; }
+                        if (this.value !== '' && this.value < 1) { this.value = 1; }
+                    "
+                    ])
+                    ->columnSpanFull(),
+
                 Select::make('groups')
                     ->label('المجموعات التي يظهر لها الدرس')
                     ->relationship('groups', 'name')
                     ->multiple()
                     ->preload()
-                    ->required(),
+                    ->required()
+                    ->columnSpanFull(),
+
                 Repeater::make('what_you_will_learn')
                     ->label('ماذا ستتعلم')
                     ->addActionLabel('إضافة نقطة')
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('value')
                             ->label('نقطة تعلم')
@@ -95,11 +107,7 @@ class LessonResource extends Resource
                         ->filter(fn(mixed $value): bool => filled($value))
                         ->values()
                         ->all()),
-                Textarea::make('about_lesson')
-                    ->label('عن الدرس')
-                    ->rows(5)
 
-                    ->required(),
                 Textarea::make('notes')
                     ->label('ملاحظات')
                     ->rows(5)
@@ -114,7 +122,7 @@ class LessonResource extends Resource
             ->columns([
                 ImageColumn::make('thumbnail_url')
                     ->label('الصورة المصغرة')
-                    ->height(48),
+                    ->imageHeight(48),
                 TextColumn::make('title')
                     ->label('عنوان الدرس')
                     ->searchable()
