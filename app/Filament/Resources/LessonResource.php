@@ -7,6 +7,7 @@ use App\Models\Lesson;
 use App\Rules\YoutubeUrl;
 use BackedEnum;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
@@ -71,14 +72,15 @@ class LessonResource extends Resource
                     ->label('رابط الصورة المصغرة')
                     ->url()
                     ->required(),
-                Textarea::make('about_lesson')
-                    ->label('عن الدرس')
-                    ->required()
-                    ->rows(5),
+                Select::make('groups')
+                    ->label('المجموعات التي يظهر لها الدرس')
+                    ->relationship('groups', 'name')
+                    ->multiple()
+                    ->preload()
+                    ->required(),
                 Repeater::make('what_you_will_learn')
                     ->label('ماذا ستتعلم')
                     ->addActionLabel('إضافة نقطة')
-                    ->defaultItems(1)
                     ->schema([
                         TextInput::make('value')
                             ->label('نقطة تعلم')
@@ -86,16 +88,22 @@ class LessonResource extends Resource
                             ->maxLength(255),
                     ])
                     ->formatStateUsing(fn(mixed $state): array => collect($state ?? [])
-                        ->map(fn($item): array => ['value' => $item['value'] ?? $item])
+                        ->map(fn($item): array => is_array($item) ? ['value' => $item['value'] ?? null] : ['value' => $item])
                         ->all())
                     ->dehydrateStateUsing(fn(mixed $state): array => collect($state ?? [])
                         ->pluck('value')
                         ->filter(fn(mixed $value): bool => filled($value))
                         ->values()
                         ->all()),
+                Textarea::make('about_lesson')
+                    ->label('عن الدرس')
+                    ->rows(5)
+
+                    ->required(),
                 Textarea::make('notes')
                     ->label('ملاحظات')
-                    ->rows(3)
+                    ->rows(5)
+                    ->columnSpanFull()
                     ->nullable(),
             ]);
     }
