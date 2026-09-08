@@ -48,7 +48,7 @@ class GroupResource extends Resource
                     ->label('اسم المجموعة')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('studentProfiles_count')
+                TextColumn::make('student_profiles_count')
                     ->counts('studentProfiles')
                     ->label('عدد الطلاب')
                     ->sortable(),
