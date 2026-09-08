@@ -117,10 +117,12 @@ class LessonResource extends Resource
                     ->height(48),
                 TextColumn::make('title')
                     ->label('عنوان الدرس')
+                    ->searchable()
                     ->sortable()
                     ->limit(40),
                 TextColumn::make('chapter_name')
-                    ->label('الفصل'),
+                    ->label('الفصل')
+                    ->searchable(),
                 RelatedCountColumn::make('groups_count')
                     ->label('عدد المجموعات')
                     ->sortable()
