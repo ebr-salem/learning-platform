@@ -63,22 +63,30 @@ class UserResource extends Resource
                     ->tel()
                     ->required()
                     ->maxLength(255),
-                TextInput::make('password')
-                    ->label('كلمة المرور')
-                    ->password()
-                    ->revealable()
-                    ->dehydrated(fn(?string $state): bool => filled($state))
-                    ->required(fn(string $operation): bool => $operation === 'create')
-                    ->confirmed()
-                    ->maxLength(255),
-                TextInput::make('password_confirmation')
-                    ->label('تأكيد كلمة المرور')
-                    ->password()
-                    ->revealable()
-                    ->dehydrated(false),
+                \Filament\Schemas\Components\Group::make([
+                    TextInput::make('password')
+                        ->label('كلمة المرور')
+                        ->password()
+                        ->revealable()
+                        ->dehydrated(false)
+                        ->confirmed()
+                        ->maxLength(255)
+                        ->required(),
+
+                    TextInput::make('password_confirmation')
+                        ->label('تأكيد كلمة المرور')
+                        ->password()
+                        ->same('password')
+                        ->revealable()
+                        ->dehydrated(false)
+                        ->confirmed()
+                        ->maxLength(255)
+                        ->required()
+                ])->columns(1),
                 Fieldset::make('بيانات ملف الطالب')
                     ->relationship('studentProfile')
                     ->columns(2)
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('student_code')
                             ->label('كود الطالب')
@@ -92,7 +100,7 @@ class UserResource extends Resource
                             ->relationship('group', 'name')
                             ->searchable()
                             ->preload()
-                            ->nullable(),
+                            ->required(),
                         FileUpload::make('profile_image')
                             ->label('صورة الطالب')
                             ->image()

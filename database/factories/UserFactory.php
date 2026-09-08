@@ -3,6 +3,8 @@
 namespace Database\Factories;
 
 use App\Enums\UserRole;
+use App\Models\Group;
+use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -50,6 +52,16 @@ class UserFactory extends Factory
         return $this->state(fn(array $attributes) => [
             'role' => UserRole::Student,
         ]);
+    }
+
+    public function withGroup(): static
+    {
+        return $this->has(StudentProfile::factory()->for(Group::factory()));
+    }
+
+    public function withGroups(int $count = 1): static
+    {
+        return $this->has(StudentProfile::factory()->count($count)->for(Group::factory()));
     }
 
     /**
