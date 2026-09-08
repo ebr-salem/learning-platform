@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
         $admin = User::factory()->create([
             'name' => 'Admin Assistant',
             'username' => 'admin',
-            'role' => UserRole::Assistant,
+            'role' => UserRole::Admin,
             'phone' => '01111111111',
             'password' => 'password',
         ]);
