@@ -47,11 +47,9 @@ class AttendanceResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('student.name')
-                    ->label('الطالب')
-                    ->searchable(),
+                    ->label('الطالب'),
                 TextColumn::make('scanner.name')
-                    ->label('سجّل بواسطة')
-                    ->searchable(),
+                    ->label('سجّل بواسطة'),
                 TextColumn::make('created_at')
                     ->label('وقت التسجيل')
                     ->dateTime('Y-m-d H:i')
@@ -61,12 +59,10 @@ class AttendanceResource extends Resource
                 SelectFilter::make('student_id')
                     ->label('الطالب')
                     ->relationship('student', 'name')
-                    ->searchable()
                     ->preload(),
                 SelectFilter::make('scanned_by')
                     ->label('المسجّل بواسطة')
                     ->relationship('scanner', 'name')
-                    ->searchable()
                     ->preload(),
             ])
             ->recordActions([

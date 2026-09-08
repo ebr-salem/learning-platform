@@ -31,8 +31,7 @@ class StudentProfileRelationManager extends RelationManager
         return $table
             ->columns([
                 TextColumn::make('student_code')
-                    ->label('كود الطالب')
-                    ->searchable(),
+                    ->label('كود الطالب'),
                 TextColumn::make('grade')
                     ->label('الصف الدراسي'),
                 TextColumn::make('dob')

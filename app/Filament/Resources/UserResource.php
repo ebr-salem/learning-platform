@@ -98,7 +98,6 @@ class UserResource extends Resource
                         Select::make('group_id')
                             ->label('المجموعة')
                             ->relationship('group', 'name')
-                            ->searchable()
                             ->preload()
                             ->required(),
                         FileUpload::make('profile_image')
@@ -142,15 +141,12 @@ class UserResource extends Resource
             ->columns([
                 TextColumn::make('studentProfile.student_code')
                     ->label('كود الطالب')
-                    ->searchable()
                     ->sortable(),
                 TextColumn::make('name')
                     ->label('الاسم')
-                    ->searchable()
                     ->sortable(),
                 TextColumn::make('username')
-                    ->label('اسم الدخول')
-                    ->searchable(),
+                    ->label('اسم الدخول'),
                 TextColumn::make('phone')
                     ->label('رقم الهاتف'),
                 TextColumn::make('studentProfile.group.name')
@@ -166,7 +162,6 @@ class UserResource extends Resource
                 \Filament\Tables\Filters\SelectFilter::make('studentProfile.group_id')
                     ->label('المجموعة')
                     ->relationship('studentProfile.group', 'name')
-                    ->searchable()
                     ->preload()
                     ->placeholder('الكل'),
             ], layout: FiltersLayout::AboveContent)

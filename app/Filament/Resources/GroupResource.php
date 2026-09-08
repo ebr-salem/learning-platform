@@ -46,7 +46,6 @@ class GroupResource extends Resource
             ->columns([
                 TextColumn::make('name')
                     ->label('اسم المجموعة')
-                    ->searchable()
                     ->sortable(),
                 TextColumn::make('student_profiles_count')
                     ->counts('studentProfiles')
@@ -57,6 +56,7 @@ class GroupResource extends Resource
                     ->dateTime('Y-m-d')
                     ->sortable(),
             ])
+            ->searchable(false)
             ->recordActions([
                 \Filament\Actions\ViewAction::make(),
                 \Filament\Actions\EditAction::make(),
