@@ -19,10 +19,18 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $admin = User::factory()->create([
-            'name' => 'Admin Assistant',
+            'name' => 'مدير النظام',
             'username' => 'admin',
-            'role' => UserRole::Assistant,
+            'role' => UserRole::Admin,
             'phone' => '01111111111',
+            'password' => 'password',
+        ]);
+
+        User::factory()->create([
+            'name' => 'مساعد',
+            'username' => 'assistant',
+            'role' => UserRole::Assistant,
+            'phone' => '01133333333',
             'password' => 'password',
         ]);
 

@@ -38,12 +38,17 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->isAssistant();
+        return $this->isAssistant() || $this->isAdmin();
     }
 
     public function isAssistant(): bool
     {
         return $this->role === UserRole::Assistant;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === UserRole::Admin;
     }
 
     public function studentProfile(): HasOne
