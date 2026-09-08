@@ -35,7 +35,7 @@ class StudentController extends Controller
 
     public function lessons(Request $request): JsonResponse
     {
-        $query = Lesson::query();
+        $query = Lesson::visibleTo($request->user());
 
         if ($request->filled('search')) {
             $query->where('title', 'like', '%' . $request->string('search') . '%');
@@ -48,16 +48,16 @@ class StudentController extends Controller
         return $this->successResponse($lessons);
     }
 
-    public function lesson(int $id): JsonResponse
+    public function lesson(Request $request, int $id): JsonResponse
     {
-        $lesson = Lesson::find($id);
+        $lesson = Lesson::visibleTo($request->user())->find($id);
 
         if ($lesson === null) {
             return $this->errorResponse('الدرس غير موجود', 404);
         }
 
-        $previousLessonId = Lesson::where('id', '<', $id)->orderByDesc('id')->value('id');
-        $nextLessonId = Lesson::where('id', '>', $id)->orderBy('id')->value('id');
+        $previousLessonId = Lesson::visibleTo($request->user())->where('id', '<', $id)->orderByDesc('id')->value('id');
+        $nextLessonId = Lesson::visibleTo($request->user())->where('id', '>', $id)->orderBy('id')->value('id');
 
         $data = $lesson->toArray();
         $data['previous_lesson_id'] = $previousLessonId;

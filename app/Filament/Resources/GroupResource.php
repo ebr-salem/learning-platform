@@ -7,6 +7,7 @@ use App\Models\Group;
 use BackedEnum;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use App\Filament\Tables\Columns\RelatedCountColumn;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -51,6 +52,16 @@ class GroupResource extends Resource
                     ->counts('studentProfiles')
                     ->label('عدد الطلاب')
                     ->sortable(),
+                RelatedCountColumn::make('lessons_count')
+                    ->label('عدد الدروس')
+                    ->sortable()
+                    ->showsRelated(
+                        relationship: 'lessons',
+                        displayColumn: 'title',
+                        titleColumn: 'name',
+                        headingPrefix: 'دروس المجموعة: ',
+                        emptyMessage: 'لا توجد دروس مرتبطة بهذه المجموعة.',
+                    ),
                 TextColumn::make('created_at')
                     ->label('تاريخ الإنشاء')
                     ->dateTime('Y-m-d')

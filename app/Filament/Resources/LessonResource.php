@@ -12,6 +12,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use App\Filament\Tables\Columns\RelatedCountColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -112,6 +113,16 @@ class LessonResource extends Resource
                     ->limit(40),
                 TextColumn::make('chapter_name')
                     ->label('الفصل'),
+                RelatedCountColumn::make('groups_count')
+                    ->label('عدد المجموعات')
+                    ->sortable()
+                    ->showsRelated(
+                        relationship: 'groups',
+                        displayColumn: 'name',
+                        titleColumn: 'title',
+                        headingPrefix: 'مجموعات الدرس: ',
+                        emptyMessage: 'لا توجد مجموعات مرتبطة بهذا الدرس.',
+                    ),
                 TextColumn::make('duration_minutes')
                     ->label('المدة')
                     ->suffix(' دقيقة')
