@@ -7,11 +7,13 @@ use App\Models\Lesson;
 use App\Rules\YoutubeUrl;
 use BackedEnum;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use App\Filament\Tables\Columns\RelatedCountColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -41,10 +43,29 @@ class LessonResource extends Resource
                     ->label('اسم الفصل')
                     ->required()
                     ->maxLength(255),
+
                 TextInput::make('title')
                     ->label('عنوان الدرس')
                     ->required()
                     ->maxLength(255),
+
+                TextInput::make('video_url')
+                    ->label('رابط فيديو اليوتيوب')
+                    ->url()
+                    ->required()
+                    ->rules([new YoutubeUrl()]),
+
+                TextInput::make('thumbnail_url')
+                    ->label('رابط الصورة المصغرة')
+                    ->url()
+                    ->required(),
+
+                Textarea::make('about_lesson')
+                    ->label('عن الدرس')
+                    ->rows(5)
+                    ->required()
+                    ->columnSpanFull(),
+
                 TextInput::make('duration_minutes')
                     ->label('المدة (بالدقائق)')
                     ->integer()
@@ -52,32 +73,26 @@ class LessonResource extends Resource
                     ->minValue(1)
                     ->maxValue(480)
                     ->extraInputAttributes([
-                        // 1. Block letters and symbols
                         'onkeypress' => 'return event.charCode >= 48 && event.charCode <= 57',
-
-                        // 2. Instantly force the value to stay between 1 and 480
                         'oninput' => "
-            if (this.value > 480) { this.value = 480; }
-            if (this.value !== '' && this.value < 1) { this.value = 1; }
-        "
-                    ]),
-                TextInput::make('video_url')
-                    ->label('رابط فيديو اليوتيوب')
-                    ->url()
+                        if (this.value > 480) { this.value = 480; }
+                        if (this.value !== '' && this.value < 1) { this.value = 1; }
+                    "
+                    ])
+                    ->columnSpanFull(),
+
+                Select::make('groups')
+                    ->label('المجموعات التي يظهر لها الدرس')
+                    ->relationship('groups', 'name')
+                    ->multiple()
+                    ->preload()
                     ->required()
-                    ->rules([new YoutubeUrl()]),
-                TextInput::make('thumbnail_url')
-                    ->label('رابط الصورة المصغرة')
-                    ->url()
-                    ->required(),
-                Textarea::make('about_lesson')
-                    ->label('عن الدرس')
-                    ->required()
-                    ->rows(5),
+                    ->columnSpanFull(),
+
                 Repeater::make('what_you_will_learn')
                     ->label('ماذا ستتعلم')
                     ->addActionLabel('إضافة نقطة')
-                    ->defaultItems(1)
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('value')
                             ->label('نقطة تعلم')
@@ -85,16 +100,18 @@ class LessonResource extends Resource
                             ->maxLength(255),
                     ])
                     ->formatStateUsing(fn(mixed $state): array => collect($state ?? [])
-                        ->map(fn($item): array => ['value' => $item['value'] ?? $item])
+                        ->map(fn($item): array => is_array($item) ? ['value' => $item['value'] ?? null] : ['value' => $item])
                         ->all())
                     ->dehydrateStateUsing(fn(mixed $state): array => collect($state ?? [])
                         ->pluck('value')
                         ->filter(fn(mixed $value): bool => filled($value))
                         ->values()
                         ->all()),
+
                 Textarea::make('notes')
                     ->label('ملاحظات')
-                    ->rows(3)
+                    ->rows(5)
+                    ->columnSpanFull()
                     ->nullable(),
             ]);
     }
@@ -105,7 +122,7 @@ class LessonResource extends Resource
             ->columns([
                 ImageColumn::make('thumbnail_url')
                     ->label('الصورة المصغرة')
-                    ->height(48),
+                    ->imageHeight(48),
                 TextColumn::make('title')
                     ->label('عنوان الدرس')
                     ->searchable()
@@ -114,6 +131,16 @@ class LessonResource extends Resource
                 TextColumn::make('chapter_name')
                     ->label('الفصل')
                     ->searchable(),
+                RelatedCountColumn::make('groups_count')
+                    ->label('عدد المجموعات')
+                    ->sortable()
+                    ->showsRelated(
+                        relationship: 'groups',
+                        displayColumn: 'name',
+                        titleColumn: 'title',
+                        headingPrefix: 'مجموعات الدرس: ',
+                        emptyMessage: 'لا توجد مجموعات مرتبطة بهذا الدرس.',
+                    ),
                 TextColumn::make('duration_minutes')
                     ->label('المدة')
                     ->suffix(' دقيقة')

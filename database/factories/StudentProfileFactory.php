@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Group;
 use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,6 +22,7 @@ class StudentProfileFactory extends Factory
     {
         return [
             'user_id' => User::factory()->student(),
+            'group_id' => Group::factory(),
             'student_code' => 'STU-'.fake()->unique()->numberBetween(1000, 9999),
             'grade' => fake()->randomElement(['الصف الأول', 'الصف الثاني', 'الصف الثالث', 'الصف الرابع', 'الصف الخامس', 'الصف السادس']),
             'profile_image' => fake()->optional()->imageUrl(),

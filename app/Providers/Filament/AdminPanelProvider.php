@@ -32,6 +32,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login(Login::class)
+            ->globalSearch(false)
             ->font('Cairo')
             ->colors([
                 'primary' => Color::Amber,

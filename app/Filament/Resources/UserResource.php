@@ -21,6 +21,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
+use Hash;
 use UnitEnum;
 
 class UserResource extends Resource
@@ -53,70 +54,90 @@ class UserResource extends Resource
                     ->label('اسم الطالب')
                     ->required()
                     ->maxLength(255),
+
                 TextInput::make('username')
                     ->label('اسم الدخول')
                     ->required()
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
+
                 TextInput::make('phone')
                     ->label('رقم الهاتف')
                     ->tel()
                     ->required()
                     ->maxLength(255),
-                TextInput::make('password')
-                    ->label('كلمة المرور')
-                    ->password()
-                    ->revealable()
-                    ->dehydrated(fn(?string $state): bool => filled($state))
-                    ->required(fn(string $operation): bool => $operation === 'create')
-                    ->confirmed()
-                    ->maxLength(255),
-                TextInput::make('password_confirmation')
-                    ->label('تأكيد كلمة المرور')
-                    ->password()
-                    ->revealable()
-                    ->dehydrated(false),
+
+                \Filament\Schemas\Components\Group::make([
+                    TextInput::make('password')
+                        ->label('كلمة المرور')
+                        ->password()
+                        ->revealable()
+                        ->confirmed()
+                        ->maxLength(255)
+                        ->required(fn(string $operation): bool => $operation === 'create')
+                        ->dehydrated(fn(?string $state): bool => filled($state))
+                        ->dehydrateStateUsing(fn(string $state): string => Hash::make($state)),
+
+                    TextInput::make('password_confirmation')
+                        ->label('تأكيد كلمة المرور')
+                        ->password()
+                        ->revealable()
+                        ->maxLength(255)
+                        ->required(fn(string $operation): bool => $operation === 'create')
+                        ->dehydrated(false),
+                ])->columns(2),
+
                 Fieldset::make('بيانات ملف الطالب')
                     ->relationship('studentProfile')
                     ->columns(2)
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('student_code')
                             ->label('كود الطالب')
                             ->disabled(),
+
+                        TextInput::make('qr_code_string')
+                            ->label('رمز QR')
+                            ->disabled(),
+
                         Select::make('grade')
                             ->label('الصف الدراسي')
                             ->options(array_combine(StudentProfile::GRADES, StudentProfile::GRADES))
                             ->required(),
+
                         Select::make('group_id')
                             ->label('المجموعة')
                             ->relationship('group', 'name')
                             ->searchable()
                             ->preload()
-                            ->nullable(),
+                            ->required(),
+
+                        DatePicker::make('dob')
+                            ->label('تاريخ الميلاد')
+                            ->required()
+                            ->maxDate(now()),
+
                         FileUpload::make('profile_image')
                             ->label('صورة الطالب')
                             ->image()
                             ->disk('public')
                             ->directory('student-profiles')
                             ->imageEditor()
+                            ->columnSpanFull()
                             ->nullable(),
-                        TextInput::make('qr_code_string')
-                            ->label('رمز QR')
-                            ->disabled(),
-                        DatePicker::make('dob')
-                            ->label('تاريخ الميلاد')
-                            ->required(),
+
                         TextInput::make('guardian_name')
                             ->label('اسم ولي الأمر')
                             ->required()
                             ->maxLength(255),
+
                         TextInput::make('guardian_phone')
                             ->label('هاتف ولي الأمر')
                             ->tel()
                             ->required()
                             ->maxLength(255)
                             ->rule(
-                                fn(\Filament\Schemas\Components\Utilities\Get $get) => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                fn(\Filament\Schemas\Components\Utilities\Get $get) => function (string $attribute, $value, Closure $fail) use ($get) {
                                     $phone = $get('../phone');
 
                                     if (filled($phone) && $value === $phone) {

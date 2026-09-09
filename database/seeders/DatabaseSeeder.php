@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\UserRole;
+use App\Models\Group;
 use App\Models\Lesson;
 use App\Models\StudentProfile;
 use App\Models\User;
@@ -53,5 +54,15 @@ class DatabaseSeeder extends Seeder
         Lesson::factory()
             ->count(5)
             ->create();
+
+        $groups = Group::all();
+
+        if ($groups->isNotEmpty()) {
+            Lesson::all()->each(function (Lesson $lesson) use ($groups): void {
+                $lesson->groups()->sync(
+                    $groups->random(min(rand(1, 2), $groups->count()))->pluck('id')->all()
+                );
+            });
+        }
     }
 }
