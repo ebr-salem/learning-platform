@@ -38,15 +38,13 @@ class AttendanceResource extends Resource
                 TextColumn::make('student.name')
                     ->label('الطالب')
                     ->searchable(),
-                TextColumn::make('student.studentProfile.group.name')
-                    ->label('المجموعة'),
                 TextColumn::make('attendance_count')
                     ->label('عدد مرات الحضور')
                     ->badge()
                     ->color('success')
                     ->alignCenter()
                     ->sortable()
-                    ->url(fn(Attendance $record, $livewire) => static::studentDetailsUrl($record, $livewire)),
+                    ->action(static::showDaysAction('showDaysFromCount')),
             ])
             ->filters([
                 SelectFilter::make('group_id')
@@ -72,29 +70,57 @@ class AttendanceResource extends Resource
                         }
                     })
             ], layout: FiltersLayout::AboveContent)
-            ->recordUrl(fn(Attendance $record, $livewire) => static::studentDetailsUrl($record, $livewire))
+            ->recordAction('showDays')
             ->recordActions([
-                Action::make('details')
-                    ->label('عرض التفاصيل')
-                    ->icon(Heroicon::OutlinedCalendarDays)
-                    ->url(fn(Attendance $record, $livewire) => static::studentDetailsUrl($record, $livewire)),
+                static::showDaysAction(),
             ])
             ->defaultSort('attendance_count', 'desc');
     }
 
     /**
-     * URL of a student's details page. Carries over the main table's
-     * selected month (if any) so the details open with the same filter.
+     * Details popup: ordered list of the student's attendance days
+     * (day name + date + time + scanner), scoped to the current
+     * group/month filters. Opens from the count badge, the row
+     * click, or the row action.
      */
-    public static function studentDetailsUrl(Attendance $record, $livewire = null): string
+    public static function showDaysAction(string $name = 'showDays'): Action
     {
-        $params = ['student' => $record->student_id];
+        return Action::make($name)
+            ->label('عرض التفاصيل')
+            ->icon(Heroicon::OutlinedCalendarDays)
+            ->modalHeading(fn(Attendance $record) => 'أيام الحضور — ' . ($record->student?->name ?? ''))
+            ->modalContent(fn(Attendance $record, $livewire) => view('filament.resources.attendance-resource.partials.attendance-days', [
+                'days' => static::attendanceDays($record, $livewire),
+            ]))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('إغلاق');
+    }
 
-        if ($livewire !== null && filled($month = static::selectedMonth($livewire))) {
-            $params['month'] = $month;
+    /**
+     * The student's attendance days, oldest first, scoped to the current
+     * group/month filters. Feeds the details popup Blade partial.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Attendance>
+     */
+    public static function attendanceDays(Attendance $record, $livewire): \Illuminate\Database\Eloquent\Collection
+    {
+        $groupId = static::selectedGroupId($livewire);
+        $month = static::selectedMonth($livewire);
+
+        $query = Attendance::query()
+            ->where('attendances.student_id', $record->student_id)
+            ->with('scanner');
+
+        if (filled($groupId)) {
+            $query->whereHas('student.studentProfile', fn($q) => $q->where('group_id', $groupId));
         }
 
-        return Pages\StudentAttendances::getUrl($params);
+        if (filled($month) && preg_match('/^(\d{4})-(\d{2})$/', (string) $month, $matches)) {
+            $query->whereYear('attendances.created_at', $matches[1])
+                ->whereMonth('attendances.created_at', $matches[2]);
+        }
+
+        return $query->orderBy('attendances.created_at')->get();
     }
 
     /**
@@ -109,25 +135,6 @@ class AttendanceResource extends Resource
         static $options;
 
         return $options ??= Group::pluck('name', 'id')->all();
-    }
-
-    /**
-     * Month filter options for a single student's details page, memoized per
-     * page instance (Filament evaluates the options closure more than once).
-     * Built in PHP (not DATE_FORMAT) so it works on any database driver.
-     *
-     * @return array<string, string>
-     */
-    public static function studentMonthFilterOptions(int $studentId): array
-    {
-        return Attendance::query()
-            ->where('student_id', $studentId)
-            ->orderByDesc('created_at')
-            ->pluck('created_at')
-            ->map(fn($at) => Carbon::parse($at)->format('Y-m'))
-            ->unique()
-            ->mapWithKeys(fn($ym) => [$ym => Carbon::createFromFormat('Y-m', $ym)->translatedFormat('F Y')])
-            ->all();
     }
 
     /**
@@ -210,7 +217,6 @@ class AttendanceResource extends Resource
     {
         return [
             'index' => Pages\ListAttendances::route('/'),
-            'details' => Pages\StudentAttendances::route('/students/{student}'),
         ];
     }
 }
