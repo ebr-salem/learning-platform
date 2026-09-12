@@ -60,4 +60,14 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->hasMany(Attendance::class, 'scanned_by');
     }
+
+    public function financials(): HasMany
+    {
+        return $this->hasMany(Financial::class, 'user_id');
+    }
+
+    public function createdFinancials(): HasMany
+    {
+        return $this->hasMany(Financial::class, 'created_by');
+    }
 }
