@@ -8,6 +8,13 @@ use App\Models\Financial;
 use App\Models\Group;
 use App\Models\User;
 use BackedEnum;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreAction;
+use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -22,6 +29,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -60,12 +68,12 @@ class FinancialResource extends Resource
                     ->label('الطالب')
                     ->required()
                     ->searchable()
-                    ->preload()
+                    ->searchDebounce(500)
                     ->live()
                     ->relationship(
                         'user',
                         'name',
-                        modifyQueryUsing: fn(Builder $query): Builder => $query
+                        fn(Builder $query): Builder => $query
                             ->where('role', UserRole::Student->value)
                             ->select(['users.id', 'users.name'])
                             ->with(static::studentEagerLoad()),
@@ -112,7 +120,7 @@ class FinancialResource extends Resource
 
                 Textarea::make('description')
                     ->label('الوصف')
-                    ->required()
+                    ->nullable()
                     ->string()
                     ->maxLength(5000)
                     ->rows(4),
@@ -152,14 +160,21 @@ class FinancialResource extends Resource
         $user->loadMissing(static::studentEagerLoad());
 
         $groupName = $user->studentProfile?->group?->name ?? 'بدون مجموعة';
+        $code = $user->studentProfile?->student_code;
 
-        return "{$user->name} - {$groupName}";
+        return filled($code)
+            ? "{$user->name} ({$code}) - {$groupName}"
+            : "{$user->name} - {$groupName}";
     }
 
     /**
      * Custom search for the student select: matches student name,
-     * phone, or group name. Eager-loads studentProfile.group to
-     * avoid N+1 when building the "Name - Group" labels.
+     * phone, student code, or group name. Only fires when the user
+     * types (blank search returns no options, so opening the create
+     * form issues zero student queries).
+     *
+     * Single query only: joins fetch code + group name in the same
+     * SELECT, so no extra student_profiles / groups queries fire.
      *
      * @return array<int, string>
      */
@@ -167,25 +182,40 @@ class FinancialResource extends Resource
     {
         $search = trim($search);
 
+        if (blank($search)) {
+            return [];
+        }
+
         return User::query()
-            ->where('role', UserRole::Student->value)
-            ->select(['users.id', 'users.name', 'users.phone'])
-            ->with(static::studentEagerLoad())
-            ->when(
-                filled($search),
-                fn(Builder $query): Builder => $query->where(function (Builder $query) use ($search): void {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%")
-                        ->orWhereHas(
-                            'studentProfile.group',
-                            fn(Builder $groupQuery): Builder => $groupQuery->where('name', 'like', "%{$search}%"),
-                        );
-                }),
-            )
-            ->orderBy('name')
+            ->where('users.role', UserRole::Student->value)
+            ->leftJoin('student_profiles', 'student_profiles.user_id', '=', 'users.id')
+            ->leftJoin('groups', 'groups.id', '=', 'student_profiles.group_id')
+            ->select([
+                'users.id',
+                'users.name',
+                'users.phone',
+                'student_profiles.student_code',
+                'groups.name as group_name',
+            ])
+            ->where(function (Builder $query) use ($search): void {
+                $query->where('users.name', 'like', "%{$search}%")
+                    ->orWhere('users.phone', 'like', "%{$search}%")
+                    ->orWhere('student_profiles.student_code', 'like', "%{$search}%")
+                    ->orWhere('groups.name', 'like', "%{$search}%");
+            })
+            ->orderBy('users.name')
             ->limit(50)
             ->get()
-            ->mapWithKeys(fn(User $user): array => [$user->getKey() => static::studentOptionLabel($user)])
+            ->mapWithKeys(function (User $user): array {
+                $groupName = $user->getAttribute('group_name') ?? 'بدون مجموعة';
+                $code = $user->getAttribute('student_code');
+
+                $label = filled($code)
+                    ? "{$user->name} ({$code}) - {$groupName}"
+                    : "{$user->name} - {$groupName}";
+
+                return [$user->getKey() => $label];
+            })
             ->all();
     }
 
@@ -307,8 +337,10 @@ class FinancialResource extends Resource
             ->recordUrl(null)
             ->recordActions([
                 static::viewDetailsAction(),
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
+                RestoreAction::make(),
+                ForceDeleteAction::make(),
             ])
             ->filters([
                 SelectFilter::make('group_id')
@@ -342,11 +374,6 @@ class FinancialResource extends Resource
             ->emptyStateHeading('اختر فلتر لعرض البيانات')
             ->emptyStateDescription('اختر المجموعة أو الشهر لعرض السجلات المالية')
             ->emptyStateIcon(Heroicon::OutlinedFunnel)
-            ->toolbarActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
             ->defaultSort('created_at', 'desc');
     }
 
@@ -383,20 +410,9 @@ class FinancialResource extends Resource
     }
 
     /**
-     * Group filter options sorted by result count (most financials first),
-     * memoized per request: Filament evaluates the options closure more
-     * than once per page load, so cache the result instead of hitting
-     * the DB every time.
-     *
-     * Counts financial records per group through users -> studentProfiles
-     * (same path as the filter query's whereHas), so the number in each
-     * label matches what selecting that group will return. Zero-count
-     * groups are included last so the filter still lists every group.
-     *
-     * NOTE: SelectFilter options are plain strings (native + searchable
-     * select), so "flexing" title vs count is done via label formatting
-     * "name (N سجل)" — Filament v4 SelectFilter has no per-option
-     * description/HTML slot to split them into columns.
+     * Group filter options: plain "name" list, no counts.
+     * Memoized per request since Filament evaluates the options
+     * closure more than once per page load.
      *
      * @return array<int, string>
      */
@@ -404,29 +420,9 @@ class FinancialResource extends Resource
     {
         static $options;
 
-        if ($options !== null) {
-            return $options;
-        }
-
-        $counts = Financial::query()
-            ->join('users', 'users.id', '=', 'financials.user_id')
-            ->join('student_profiles', 'student_profiles.user_id', '=', 'users.id')
-            ->whereNotNull('student_profiles.group_id')
-            ->selectRaw('student_profiles.group_id as group_id, COUNT(*) as aggregate')
-            ->groupBy('student_profiles.group_id')
-            ->pluck('aggregate', 'group_id')
-            ->map(fn($value): int => (int) $value)
-            ->all();
-
-        return $options = Group::query()
+        return $options ??= Group::query()
+            ->orderBy('name')
             ->pluck('name', 'id')
-            ->map(fn(string $name, int $id): array => [
-                'id' => $id,
-                'name' => $name,
-                'count' => $counts[$id] ?? 0,
-            ])
-            ->sort(fn(array $a, array $b): int => $b['count'] <=> $a['count'] ?: strcmp($a['name'], $b['name']))
-            ->mapWithKeys(fn(array $row): array => [$row['id'] => "{$row['name']} ({$row['count']} سجل)"])
             ->all();
     }
 

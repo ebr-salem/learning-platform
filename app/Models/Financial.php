@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use InvalidArgumentException;
 
 #[Fillable(['title', 'description', 'user_id', 'created_by'])]
@@ -15,6 +16,7 @@ class Financial extends Model
 {
     /** @use HasFactory<FinancialFactory> */
     use HasFactory;
+    use SoftDeletes;
 
     /**
      * Ensure only students can own a financial record, even outside Filament forms.
