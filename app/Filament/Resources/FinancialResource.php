@@ -8,6 +8,13 @@ use App\Models\Financial;
 use App\Models\Group;
 use App\Models\User;
 use BackedEnum;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreAction;
+use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -22,6 +29,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -329,8 +337,10 @@ class FinancialResource extends Resource
             ->recordUrl(null)
             ->recordActions([
                 static::viewDetailsAction(),
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
+                RestoreAction::make(),
+                ForceDeleteAction::make(),
             ])
             ->filters([
                 SelectFilter::make('group_id')
@@ -364,11 +374,6 @@ class FinancialResource extends Resource
             ->emptyStateHeading('اختر فلتر لعرض البيانات')
             ->emptyStateDescription('اختر المجموعة أو الشهر لعرض السجلات المالية')
             ->emptyStateIcon(Heroicon::OutlinedFunnel)
-            ->toolbarActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
             ->defaultSort('created_at', 'desc');
     }
 
