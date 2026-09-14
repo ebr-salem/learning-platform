@@ -10,10 +10,13 @@ use App\Models\User;
 use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -44,6 +47,7 @@ class FinancialResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema
+            ->columns(1)
             ->components([
                 Hidden::make('created_by')
                     ->default(fn() => auth()->id())
@@ -57,14 +61,48 @@ class FinancialResource extends Resource
                     ->required()
                     ->searchable()
                     ->preload()
+                    ->live()
                     ->relationship(
                         'user',
                         'name',
-                        modifyQueryUsing: fn(Builder $query): Builder => $query->where('role', UserRole::Student->value),
+                        modifyQueryUsing: fn(Builder $query): Builder => $query
+                            ->where('role', UserRole::Student->value)
+                            ->select(['users.id', 'users.name'])
+                            ->with(static::studentEagerLoad()),
+                    )
+                    ->getOptionLabelFromRecordUsing(
+                        fn(User $record): string => static::studentOptionLabel($record),
+                    )
+                    ->getSearchResultsUsing(
+                        fn(string $search): array => static::searchStudentOptions($search),
+                    )
+                    ->getOptionLabelUsing(
+                        fn(mixed $value): ?string => static::resolveStudentOptionLabel($value),
                     )
                     ->rule(
                         Rule::exists('users', 'id')->where('role', UserRole::Student->value),
                     ),
+
+                Section::make('بيانات الطالب')
+                    ->visible(fn(Get $get): bool => filled($get('user_id')))
+                    ->columns(2)
+                    ->schema([
+                        Placeholder::make('selected_student_name')
+                            ->label('اسم الطالب')
+                            ->content(fn(Get $get): string => static::selectedStudent($get('user_id'))?->name ?? '—'),
+                        Placeholder::make('selected_student_code')
+                            ->label('كود الطالب')
+                            ->content(fn(Get $get): string => static::selectedStudent($get('user_id'))?->studentProfile?->student_code ?? '—'),
+                        Placeholder::make('selected_student_phone')
+                            ->label('رقم الهاتف')
+                            ->content(fn(Get $get): string => static::selectedStudent($get('user_id'))?->phone ?? '—'),
+                        Placeholder::make('selected_student_group')
+                            ->label('المجموعة')
+                            ->content(fn(Get $get): string => static::selectedStudent($get('user_id'))?->studentProfile?->group?->name ?? 'بدون مجموعة'),
+                        Placeholder::make('selected_student_financials')
+                            ->label('السجلات المالية')
+                            ->content(fn(Get $get): string => static::studentFinancialSummary($get('user_id'))),
+                    ]),
 
                 TextInput::make('title')
                     ->label('العنوان')
@@ -77,9 +115,153 @@ class FinancialResource extends Resource
                     ->required()
                     ->string()
                     ->maxLength(5000)
-                    ->rows(4)
-                    ->columnSpanFull(),
+                    ->rows(4),
             ]);
+    }
+
+    /**
+     * Label for a student option: "Name - Group".
+     *
+     * Relation check: User hasOne StudentProfile belongsTo Group
+     * (single group per student — see student_profiles.group_id).
+     * There is no many-to-many student<->group table, so the label
+     * shows the one group, with a "بدون مجموعة" fallback when the
+     * profile/group is missing.
+     */
+    /**
+     * Constrained eager load for the student option label / detail card.
+     * Only the columns actually displayed are fetched:
+     * - student_profiles: id (match), user_id (match), group_id (match
+     *   for group relation), student_code (display)
+     * - groups: id (match), name (display)
+     * This turns `select * ... where id in (...)` into
+     * `select id, ... ... where id in (...)`.
+     *
+     * @return array<string>
+     */
+    protected static function studentEagerLoad(): array
+    {
+        return [
+            'studentProfile:id,user_id,group_id,student_code',
+            'studentProfile.group:id,name',
+        ];
+    }
+
+    public static function studentOptionLabel(User $user): string
+    {
+        $user->loadMissing(static::studentEagerLoad());
+
+        $groupName = $user->studentProfile?->group?->name ?? 'بدون مجموعة';
+
+        return "{$user->name} - {$groupName}";
+    }
+
+    /**
+     * Custom search for the student select: matches student name,
+     * phone, or group name. Eager-loads studentProfile.group to
+     * avoid N+1 when building the "Name - Group" labels.
+     *
+     * @return array<int, string>
+     */
+    public static function searchStudentOptions(string $search): array
+    {
+        $search = trim($search);
+
+        return User::query()
+            ->where('role', UserRole::Student->value)
+            ->select(['users.id', 'users.name', 'users.phone'])
+            ->with(static::studentEagerLoad())
+            ->when(
+                filled($search),
+                fn(Builder $query): Builder => $query->where(function (Builder $query) use ($search): void {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhereHas(
+                            'studentProfile.group',
+                            fn(Builder $groupQuery): Builder => $groupQuery->where('name', 'like', "%{$search}%"),
+                        );
+                }),
+            )
+            ->orderBy('name')
+            ->limit(50)
+            ->get()
+            ->mapWithKeys(fn(User $user): array => [$user->getKey() => static::studentOptionLabel($user)])
+            ->all();
+    }
+
+    /**
+     * Per-request memoization for the selected student.
+     * The detail Section renders 4 Placeholders, each calling
+     * selectedStudent() with the same id — without this cache that is
+     * 4 identical user queries (+ profile/group eager loads) per
+     * Livewire render. Static resets on the next request, so selecting
+     * a different student can never return stale data.
+     *
+     * @var array<string, ?User>
+     */
+    protected static array $selectedStudentCache = [];
+
+    /**
+     * Resolve the label for an already-selected student id
+     * (used for the current selection, e.g. on the edit page).
+     * Reuses the memoized selectedStudent() so the select label
+     * does not issue its own duplicate query.
+     */
+    public static function resolveStudentOptionLabel(mixed $value): ?string
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        $user = static::selectedStudent($value);
+
+        if ($user === null) {
+            return null;
+        }
+
+        return static::studentOptionLabel($user);
+    }
+
+    /**
+     * The currently selected student with profile/group + financial
+     * count preloaded. Memoized per id per request: repeated calls
+     * with the same id (one per Placeholder) hit the cache.
+     */
+    protected static function selectedStudent(mixed $id): ?User
+    {
+        if (blank($id)) {
+            return null;
+        }
+
+        $key = (string) $id;
+
+        if (array_key_exists($key, static::$selectedStudentCache)) {
+            return static::$selectedStudentCache[$key];
+        }
+
+        return static::$selectedStudentCache[$key] = User::query()
+            ->select(['users.id', 'users.name', 'users.phone'])
+            ->with(static::studentEagerLoad())
+            ->withCount('financials')
+            ->find($id);
+    }
+
+    /**
+     * Financial summary for the selected student. The financials
+     * table has no amount column (title/description only), so the
+     * summary is the record count.
+     */
+    protected static function studentFinancialSummary(mixed $id): string
+    {
+        $student = static::selectedStudent($id);
+
+        if ($student === null) {
+            return '—';
+        }
+
+        $count = (int) ($student->financials_count ?? 0);
+
+        return $count > 0 ? "{$count} سجل" : 'لا توجد سجلات';
     }
 
     public static function table(Table $table): Table
@@ -175,8 +357,8 @@ class FinancialResource extends Resource
     public static function viewDetailsAction(string $name = 'view'): ViewAction
     {
         return ViewAction::make($name)
-            ->modalHeading(fn (?Financial $record): string => 'السجل المالي — ' . ($record?->title ?? ''))
-            ->modalContent(fn (Financial $record): \Illuminate\Contracts\View\View => view(
+            ->modalHeading(fn(?Financial $record): string => 'السجل المالي — ' . ($record?->title ?? ''))
+            ->modalContent(fn(Financial $record): \Illuminate\Contracts\View\View => view(
                 'filament.resources.financial-resource.partials.financial-details',
                 ['record' => $record->loadMissing(['user.studentProfile.group', 'creator'])],
             ))
