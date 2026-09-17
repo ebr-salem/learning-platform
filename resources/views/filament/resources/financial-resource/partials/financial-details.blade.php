@@ -11,16 +11,32 @@
         $created = $record->created_at ? \Illuminate\Support\Carbon::parse($record->created_at) : null;
         $studentName = $record->user?->name ?? '—';
         $creatorName = $record->creator?->name ?? $record->createdBy?->name ?? '—';
+        $type = $record->type instanceof \App\Enums\FinancialType
+            ? $record->type
+            : \App\Enums\FinancialType::tryFrom((string) ($record->type ?? ''));
+        $typeLabel = $type?->getLabel() ?? '—';
+        $titleLabel = $type && ! in_array($type->value, \App\Enums\FinancialType::typesWithManualTitle(), true)
+            ? (\App\Enums\FinancialType::monthTitleLabel($record->title) ?? $record->title ?? '—')
+            : ($record->title ?? '—');
     @endphp
 
     <div dir="rtl" style="display:flex; flex-direction:column; gap:20px;">
 
-        {{-- Title --}}
-        <div>
-            <p style="font-size:0.75rem; color:#9ca3af; margin-bottom:4px;">العنوان</p>
-            <p style="font-size:1rem; font-weight:600; color:#fff; line-height:1.5;">
-                {{ $record->title ?? '—' }}
-            </p>
+        {{-- Type + Title side by side --}}
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div style="background:rgba(255,255,255,0.05); border-radius:8px; padding:12px 16px;">
+                <p style="font-size:0.75rem; color:#9ca3af; margin-bottom:4px;">نوع العملية</p>
+                <p style="font-size:0.875rem; font-weight:500; color:#fff;">
+                    {{ $typeLabel }}
+                </p>
+            </div>
+
+            <div>
+                <p style="font-size:0.75rem; color:#9ca3af; margin-bottom:4px;">العنوان</p>
+                <p style="font-size:1rem; font-weight:600; color:#fff; line-height:1.5;">
+                    {{ $titleLabel }}
+                </p>
+            </div>
         </div>
 
         {{-- Student + Creator side by side --}}

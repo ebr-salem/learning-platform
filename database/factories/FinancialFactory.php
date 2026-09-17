@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\FinancialType;
 use App\Models\Financial;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,7 +22,8 @@ class FinancialFactory extends Factory
     public function definition(): array
     {
         return [
-            'title' => fake()->sentence(3),
+            'type' => FinancialType::Monthly,
+            'title' => (string) fake()->numberBetween(1, 12),
             'description' => fake()->paragraph(),
             'user_id' => User::factory()->student(),
             'created_by' => User::factory()->assistant(),

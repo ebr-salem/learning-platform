@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\FinancialType;
 use App\Enums\UserRole;
 use App\Filament\Resources\FinancialResource\Pages;
 use App\Models\Financial;
@@ -24,6 +25,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -112,9 +114,30 @@ class FinancialResource extends Resource
                             ->content(fn(Get $get): string => static::studentFinancialSummary($get('user_id'))),
                     ]),
 
-                TextInput::make('title')
-                    ->label('العنوان')
+                Select::make('type')
+                    ->label('نوع العملية')
+                    ->options(FinancialType::class)
+                    ->default(FinancialType::Monthly)
                     ->required()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('monthly_title', null);
+                        $set('custom_title', null);
+                    })
+                    ->rule(Rule::enum(FinancialType::class)),
+
+                Select::make('monthly_title')
+                    ->label('العنوان (الشهر)')
+                    ->options(fn(): array => FinancialType::monthTitleOptions())
+                    ->visible(fn(Get $get): bool => !static::isManualTitleType($get('type')))
+                    ->required(fn(Get $get): bool => !static::isManualTitleType($get('type')))
+                    ->rule(Rule::in(array_keys(FinancialType::monthTitleOptions()))),
+
+                TextInput::make('custom_title')
+                    ->label('العنوان')
+                    ->placeholder('اكتب عنوان العملية')
+                    ->visible(fn(Get $get): bool => static::isManualTitleType($get('type')))
+                    ->required(fn(Get $get): bool => static::isManualTitleType($get('type')))
                     ->string()
                     ->maxLength(255),
 
@@ -294,6 +317,66 @@ class FinancialResource extends Resource
         return $count > 0 ? "{$count} سجل" : 'لا توجد سجلات';
     }
 
+    /**
+     * Whether the given process type needs a manually entered title.
+     * Blank (fresh form) defaults to monthly, and any future enum case
+     * defaults to the 1-12 month select unless listed in
+     * FinancialType::typesWithManualTitle() — so only "أخرى" (and
+     * future manual cases) show the free-text title field.
+     */
+    public static function isManualTitleType(mixed $type): bool
+    {
+        $value = $type instanceof FinancialType ? $type->value : $type;
+
+        if (blank($value)) {
+            return false;
+        }
+
+        return in_array((string) $value, FinancialType::typesWithManualTitle(), true);
+    }
+
+    /**
+     * Merge the conditional title inputs into the stored `title`.
+     * Monthly (and any future select-based type) stores the month
+     * number "1".."12"; manual types store the free text.
+     * Used by the create/edit pages before saving.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function consolidateTitleData(array $data): array
+    {
+        if (static::isManualTitleType($data['type'] ?? null)) {
+            $data['title'] = trim((string) ($data['custom_title'] ?? $data['title'] ?? ''));
+        } else {
+            $data['title'] = (string) ($data['monthly_title'] ?? $data['title'] ?? '');
+        }
+
+        unset($data['monthly_title'], $data['custom_title']);
+
+        return $data;
+    }
+
+    /**
+     * Split the stored `title` back into the conditional form inputs.
+     * Used by the edit page before filling the form.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public static function splitTitleData(array $data): array
+    {
+        if (static::isManualTitleType($data['type'] ?? null)) {
+            $data['custom_title'] = $data['title'] ?? null;
+            $data['monthly_title'] = null;
+        } else {
+            $data['monthly_title'] = $data['title'] ?? null;
+            $data['custom_title'] = null;
+        }
+
+        return $data;
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -307,6 +390,7 @@ class FinancialResource extends Resource
                     blank(static::selectedStudentId($livewire))
                     && blank(static::selectedGroupId($livewire))
                     && blank(static::selectedMonth($livewire))
+                    && blank(static::selectedType($livewire))
                 ) {
                     $query->where('financials.id', 0);
                 }
@@ -314,8 +398,17 @@ class FinancialResource extends Resource
                 return $query;
             })
             ->columns([
+                TextColumn::make('type')
+                    ->label('النوع')
+                    ->badge()
+                    ->sortable(),
                 TextColumn::make('title')
                     ->label('العنوان')
+                    ->formatStateUsing(
+                        fn(Financial $record): string => static::isManualTitleType($record->type)
+                            ? (string) $record->title
+                            : (FinancialType::monthTitleLabel($record->title) ?? (string) $record->title),
+                    )
                     ->searchable()
                     ->sortable()
                     ->limit(50),
@@ -343,6 +436,10 @@ class FinancialResource extends Resource
                 ForceDeleteAction::make(),
             ])
             ->filters([
+                SelectFilter::make('type')
+                    ->label('النوع')
+                    ->options(FinancialType::class)
+                    ->preload(),
                 SelectFilter::make('group_id')
                     ->label('المجموعة')
                     ->options(fn(): array => static::groupFilterOptions())
@@ -464,6 +561,14 @@ class FinancialResource extends Resource
     public static function selectedGroupId($livewire): mixed
     {
         return static::selectedFilterValue($livewire, 'group_id');
+    }
+
+    /**
+     * The selected type filter value on the table (null when none).
+     */
+    public static function selectedType($livewire): mixed
+    {
+        return static::selectedFilterValue($livewire, 'type');
     }
 
     /**
