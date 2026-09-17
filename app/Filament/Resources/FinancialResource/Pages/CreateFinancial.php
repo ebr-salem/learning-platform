@@ -26,6 +26,6 @@ class CreateFinancial extends CreateRecord
             $data['created_by'] = auth()->id();
         }
 
-        return $data;
+        return FinancialResource::consolidateTitleData($data);
     }
 }

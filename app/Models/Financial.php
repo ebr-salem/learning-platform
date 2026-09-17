@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\FinancialType;
 use App\Enums\UserRole;
 use Database\Factories\FinancialFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,12 +12,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use InvalidArgumentException;
 
-#[Fillable(['title', 'description', 'user_id', 'created_by'])]
+#[Fillable(['title', 'description', 'user_id', 'created_by', 'type'])]
 class Financial extends Model
 {
     /** @use HasFactory<FinancialFactory> */
     use HasFactory;
     use SoftDeletes;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'type' => FinancialType::class,
+        ];
+    }
 
     /**
      * Ensure only students can own a financial record, even outside Filament forms.

@@ -15,6 +15,16 @@ class EditFinancial extends EditRecord
     }
 
     /**
+     * Split the stored title into the conditional inputs so the form
+     * shows the month select for monthly records and the free-text
+     * input for manual ("أخرى") records.
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        return FinancialResource::splitTitleData($data);
+    }
+
+    /**
      * Lock the assistant creator on edit: never allow changing
      * created_by via the form — keep the original value.
      */
@@ -22,6 +32,6 @@ class EditFinancial extends EditRecord
     {
         unset($data['created_by']);
 
-        return $data;
+        return FinancialResource::consolidateTitleData($data);
     }
 }
