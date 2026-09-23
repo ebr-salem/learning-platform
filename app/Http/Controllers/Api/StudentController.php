@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\FinancialType;
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use Illuminate\Http\JsonResponse;
@@ -38,7 +39,7 @@ class StudentController extends Controller
         $query = Lesson::visibleTo($request->user());
 
         if ($request->filled('search')) {
-            $query->where('title', 'like', '%' . $request->string('search') . '%');
+            $query->where('title', 'like', '%'.$request->string('search').'%');
         }
 
         $lessons = $query
@@ -64,5 +65,84 @@ class StudentController extends Controller
         $data['next_lesson_id'] = $nextLessonId;
 
         return $this->successResponse($data);
+    }
+
+    public function reports(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'month' => ['nullable', 'integer', 'between:1,12'],
+            'year' => ['nullable', 'integer', 'between:1900,2099'],
+        ]);
+
+        $month = $validated['month'] ?? null;
+        $year = $validated['year'] ?? null;
+        $user = $request->user();
+
+        $attendanceQuery = $user->attendances()->orderByDesc('created_at');
+
+        if ($year !== null) {
+            $attendanceQuery->whereYear('created_at', $year);
+        }
+
+        $attendance = $attendanceQuery->get(['id', 'created_at'])->map(
+            fn ($record) => [
+                'id' => $record->id,
+                'date' => $record->created_at->format('Y-m-d'),
+            ]
+        );
+
+        $financialQuery = $user->financials()->orderByDesc('created_at');
+
+        if ($year !== null) {
+            $financialQuery->whereYear('created_at', $year);
+        }
+
+        if ($month !== null) {
+            $financialQuery->where(function ($query) use ($month): void {
+                $query->where('type', FinancialType::Other->value)
+                    ->orWhere(function ($query) use ($month): void {
+                        $query->where('type', FinancialType::Monthly->value)
+                            ->where('title', (string) $month);
+                    });
+            });
+        }
+
+        $financials = $financialQuery->get()->map(function ($record) {
+            $isMonthly = $record->type->isMonthly();
+
+            return [
+                'id' => $record->id,
+                'type' => $record->type->value,
+                'type_label' => $record->type->getLabel(),
+                'title' => $record->title,
+                'title_label' => $isMonthly
+                    ? FinancialType::monthTitleLabel($record->title)
+                    : $record->title,
+                'description' => $record->description,
+                'created_at' => $record->created_at?->format('Y-m-d'),
+                'created_by' => $record->creator?->name,
+            ];
+        });
+
+        $profile = $user->studentProfile;
+
+        return $this->successResponse([
+            'student' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'student_code' => $profile?->student_code,
+                'grade' => $profile?->grade,
+                'group_name' => $profile?->group?->name,
+                'profile_image' => $profile?->profile_image,
+            ],
+            'attendance' => [
+                'total' => $attendance->count(),
+                'records' => $attendance->values(),
+            ],
+            'financials' => [
+                'total' => $financials->count(),
+                'records' => $financials->values(),
+            ],
+        ]);
     }
 }
