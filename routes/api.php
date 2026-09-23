@@ -29,6 +29,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/profile', [StudentController::class, 'profile']);
                 Route::get('/lessons', [StudentController::class, 'lessons']);
                 Route::get('/lessons/{id}', [StudentController::class, 'lesson']);
+                Route::get('/reports', [StudentController::class, 'reports']);
             });
     });
 });
