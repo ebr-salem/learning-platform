@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
-use App\Jobs\SendAttendanceSmsJob;
+use App\Jobs\SendAttendanceNotificationJob;
 use App\Models\Attendance;
 use App\Models\StudentProfile;
 use App\Models\User;
@@ -58,7 +58,7 @@ class AssistantController extends Controller
             'scanned_by' => $request->user()->id,
         ]);
 
-        SendAttendanceSmsJob::dispatch($student);
+        SendAttendanceNotificationJob::dispatch($student);
 
         return $this->successResponse($attendance->fresh(), 'تم تسجيل الحضور بنجاح', 201);
     }
