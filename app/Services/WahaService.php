@@ -65,9 +65,9 @@ class WahaService
             return WahaSendResult::failed($this->errorMessage($response), $response->status());
         }
 
-        $messageId = $response->json('id');
+        $messageId = $this->messageId($response);
 
-        if (! is_string($messageId) || $messageId === '') {
+        if ($messageId === null) {
             return WahaSendResult::failed('استجابة WAHA غير متوقعة: '.$this->bodyExcerpt($response), $response->status());
         }
 
@@ -208,6 +208,36 @@ class WahaService
     private function endpoint(string $path): string
     {
         return $this->baseUrl().'/'.ltrim($path, '/');
+    }
+
+    /**
+     * Pull the message id out of a send response. Depending on the engine and
+     * WAHA version the id is either a plain string, an object (WEBJS/NOWEB)
+     * carrying a "_serialized" value, or nested under "_data" or "key".
+     */
+    private function messageId(Response $response): ?string
+    {
+        $paths = [
+            'id',
+            'id._serialized',
+            'id.id',
+            '_data.id',
+            '_data.id._serialized',
+            '_data.id.id',
+            'key.id',
+            '_data.key.id',
+            'message.id',
+        ];
+
+        foreach ($paths as $path) {
+            $value = $response->json($path);
+
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     /**

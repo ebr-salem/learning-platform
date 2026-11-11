@@ -79,6 +79,56 @@ class WahaServiceTest extends TestCase
     }
 
     #[Test]
+    public function it_reads_the_serialized_id_from_an_object_id_response(): void
+    {
+        $this->configure();
+
+        Http::fake([
+            '*/api/sendText' => Http::response([
+                'id' => [
+                    'fromMe' => true,
+                    'remote' => '201012345678@c.us',
+                    'id' => '3EB0525197F9CF94898BBC',
+                    '_serialized' => 'true_201012345678@c.us_3EB0525197F9CF94898BBC',
+                ],
+                'body' => 'مرحبا',
+            ], 200),
+        ]);
+
+        $result = app(WahaService::class)->sendText('201012345678@c.us', 'مرحبا');
+
+        $this->assertTrue($result->ok);
+        $this->assertSame('true_201012345678@c.us_3EB0525197F9CF94898BBC', $result->messageId);
+    }
+
+    #[Test]
+    public function it_reads_the_message_id_wrapped_in_data(): void
+    {
+        $this->configure();
+
+        Http::fake([
+            '*/api/sendText' => Http::response([
+                '_data' => [
+                    'id' => [
+                        'fromMe' => true,
+                        'remote' => '102160645767196@lid',
+                        'id' => '3EB0525197F9CF94898BBC',
+                        '_serialized' => 'true_102160645767196@lid_3EB0525197F9CF94898BBC',
+                    ],
+                    'body' => 'رسالة تجريبية من منصة التعلم',
+                ],
+            ], 200),
+        ]);
+
+        $result = app(WahaService::class)->sendText('102160645767196@lid', 'رسالة تجريبية من منصة التعلم');
+
+        $this->assertTrue($result->ok);
+        $this->assertSame('true_102160645767196@lid_3EB0525197F9CF94898BBC', $result->messageId);
+        $this->assertSame(200, $result->httpStatus);
+        $this->assertNull($result->error);
+    }
+
+    #[Test]
     public function it_rejects_a_success_response_without_a_message_id(): void
     {
         $this->configure();
